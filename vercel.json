@@ -1,13 +1,12 @@
 {
   "version": 2,
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm build",
-  "functions": {
-    "dist/server.js": {
-      "runtime": "nodejs20.x"
+  "builds": [
+    {
+      "src": "src/server.ts",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "routes": [
-    { "src": "/(.*)", "dest": "/dist/server.js" }
+    { "src": "/(.*)", "dest": "/src/server.ts" }
   ]
 }
