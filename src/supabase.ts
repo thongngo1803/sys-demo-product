@@ -16,10 +16,12 @@ create table public.demo_orders (
 `
 
 // Fetch column names for a table via PostgREST's built-in OpenAPI schema endpoint.
+// Requires the service_role key — the anon key returns 401 for this endpoint.
 // Returns [] if Supabase is unreachable or the table is not found.
 export async function fetchSupabaseColumns(tableName: string): Promise<string[]> {
   const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_ANON_KEY
+  // The OpenAPI schema endpoint requires the service_role key, not the anon key
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY
   if (!url || !key) return []
   try {
     const res = await fetch(`${url}/rest/v1/`, {
@@ -29,12 +31,26 @@ export async function fetchSupabaseColumns(tableName: string): Promise<string[]>
         Accept: 'application/openapi+json',
       },
     })
-    if (!res.ok) return []
+    if (!res.ok) {
+      const text = await res.text().catch(() => '(unreadable)')
+      console.error(`[DEBUG] OpenAPI fetch failed: HTTP ${res.status} — ${text.slice(0, 200)}`)
+      return []
+    }
     const openapi = (await res.json()) as {
+      components?: { schemas?: Record<string, { properties?: Record<string, unknown> }> }
       definitions?: Record<string, { properties?: Record<string, unknown> }>
     }
-    return Object.keys(openapi.definitions?.[tableName]?.properties ?? {})
-  } catch {
+    // OpenAPI 3.0 (Supabase/PostgREST 11+) uses components.schemas; fall back to Swagger 2.0 definitions
+    const schemas = openapi.components?.schemas ?? openapi.definitions ?? {}
+    const allKeys = Object.keys(schemas)
+    console.error(`[DEBUG] Exposed tables (${allKeys.length}): [${allKeys.join(', ')}]`)
+    if (!schemas[tableName]) {
+      console.error(`[DEBUG] Table "${tableName}" not found in schema`)
+    }
+    const props = (schemas[tableName] ?? {}) as { properties?: Record<string, unknown> }
+    return Object.keys(props.properties ?? {})
+  } catch (err) {
+    console.error(`[DEBUG] fetchSupabaseColumns exception:`, err)
     return []
   }
 }
