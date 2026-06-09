@@ -1,6 +1,6 @@
 import { bumpPolicyVersion, consentNeedsPrompt, getPolicyVersion, recordConsent, vendorDecisions, } from './consent.js';
 import { productHealth } from './health.js';
-import { supabaseSchemaReport, supabaseStatus } from './supabase.js';
+import { fetchSupabaseColumns, supabaseSchemaReport, supabaseStatus } from './supabase.js';
 // ── @sys/consent demo ────────────────────────────────────────────────────────
 console.log('\n=== @sys/consent: ALLOW / DENY decision engine ===\n');
 console.log(`[1] Before any consent — policy version: "${getPolicyVersion()}"`);
@@ -18,10 +18,27 @@ console.log('    → requiresReprompt() returns true because stored version ≠ 
 console.table(await vendorDecisions());
 // ── @sys/warp demo ───────────────────────────────────────────────────────────
 console.log('\n=== @sys/warp: config cross-validation (3 check types) ===\n');
+// Step 1: show Supabase connection status and fetched columns before running checks
+const status = supabaseStatus();
+if (status.configured) {
+    console.log(`[Supabase] Connected — ${status.url}`);
+    const columns = await fetchSupabaseColumns('demo_orders');
+    if (columns.length > 0) {
+        console.log(`[Supabase] demo_orders columns fetched: ${columns.join(', ')}`);
+        console.log('           ↑ warp will scan these live column names for banned tokens\n');
+    }
+    else {
+        console.log('[Supabase] demo_orders not found or no columns returned — check table exists and RLS allows anon read\n');
+    }
+}
+else {
+    console.log(`[Supabase] Not configured (missing: ${status.missing.join(', ')}) — using demo SQL fallback\n`);
+}
+// Step 2: run warp checks
 const schema = await supabaseSchemaReport();
 for (const result of schema.results) {
-    const status = result.errors.length === 0 ? 'PASS' : 'FAIL';
-    console.log(`[${status}] ${result.name}`);
+    const verdict = result.errors.length === 0 ? 'PASS' : 'FAIL';
+    console.log(`[${verdict}] ${result.name}`);
     for (const err of result.errors)
         console.log(`       ✗ ${err}`);
 }
@@ -30,4 +47,3 @@ console.log(`\n  Total errors: ${schema.errorCount} — clean: ${schema.clean} �
 console.log('\n=== @sys/sentinel: health probes ===\n');
 const health = await productHealth();
 console.log('healthy:', health.healthy, '| summary:', health.summary, '| alert:', health.alert);
-console.log('Supabase status:', supabaseStatus());

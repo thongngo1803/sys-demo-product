@@ -17,7 +17,7 @@ create table public.demo_orders (
 
 // Fetch column names for a table via PostgREST's built-in OpenAPI schema endpoint.
 // Returns [] if Supabase is unreachable or the table is not found.
-async function fetchSupabaseColumns(tableName: string): Promise<string[]> {
+export async function fetchSupabaseColumns(tableName: string): Promise<string[]> {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_ANON_KEY
   if (!url || !key) return []
