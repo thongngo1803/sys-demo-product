@@ -13,10 +13,12 @@ create table public.demo_orders (
 );
 `;
 // Fetch column names for a table via PostgREST's built-in OpenAPI schema endpoint.
+// Requires the service_role key — the anon key returns 401 for this endpoint.
 // Returns [] if Supabase is unreachable or the table is not found.
 export async function fetchSupabaseColumns(tableName) {
     const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_ANON_KEY;
+    // The OpenAPI schema endpoint requires the service_role key, not the anon key
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
     if (!url || !key)
         return [];
     try {
