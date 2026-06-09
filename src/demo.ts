@@ -38,7 +38,7 @@ for (const result of schema.results) {
   console.log(`[${status}] ${result.name}`)
   for (const err of result.errors) console.log(`       ✗ ${err}`)
 }
-console.log(`\n  Total errors: ${schema.errorCount} — clean: ${schema.clean}`)
+console.log(`\n  Total errors: ${schema.errorCount} — clean: ${schema.clean} — source: ${schema.source}`)
 
 // ── @sys/sentinel demo ───────────────────────────────────────────────────────
 

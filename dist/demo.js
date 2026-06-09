@@ -25,7 +25,7 @@ for (const result of schema.results) {
     for (const err of result.errors)
         console.log(`       ✗ ${err}`);
 }
-console.log(`\n  Total errors: ${schema.errorCount} — clean: ${schema.clean}`);
+console.log(`\n  Total errors: ${schema.errorCount} — clean: ${schema.clean} — source: ${schema.source}`);
 // ── @sys/sentinel demo ───────────────────────────────────────────────────────
 console.log('\n=== @sys/sentinel: health probes ===\n');
 const health = await productHealth();
