@@ -1,0 +1,24 @@
+{
+  "name": "sys-demo-product",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Small product demo that consumes @sys packages through injected seams.",
+  "packageManager": "pnpm@10.30.3",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "demo": "node dist/demo.js",
+    "start": "node dist/server.js",
+    "check": "pnpm typecheck && pnpm build && pnpm demo"
+  },
+  "dependencies": {
+    "@sys/consent": "file:../sys/packages/consent",
+    "@sys/sentinel": "file:../sys/packages/sentinel",
+    "@sys/warp": "file:../sys/packages/warp"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3"
+  }
+}
