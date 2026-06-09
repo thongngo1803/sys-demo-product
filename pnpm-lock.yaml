@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@sys/consent':
-        specifier: file:../sys/packages/consent
-        version: file:../sys/packages/consent
+        specifier: file:./vendor/consent
+        version: file:vendor/consent
       '@sys/sentinel':
-        specifier: file:../sys/packages/sentinel
-        version: file:../sys/packages/sentinel
+        specifier: file:./vendor/sentinel
+        version: file:vendor/sentinel
       '@sys/warp':
-        specifier: file:../sys/packages/warp
-        version: file:../sys/packages/warp
+        specifier: file:./vendor/warp
+        version: file:vendor/warp
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
@@ -27,15 +27,15 @@ importers:
 
 packages:
 
-  '@sys/consent@file:../sys/packages/consent':
-    resolution: {directory: ../sys/packages/consent, type: directory}
+  '@sys/consent@file:vendor/consent':
+    resolution: {directory: vendor/consent, type: directory}
 
-  '@sys/sentinel@file:../sys/packages/sentinel':
-    resolution: {directory: ../sys/packages/sentinel, type: directory}
+  '@sys/sentinel@file:vendor/sentinel':
+    resolution: {directory: vendor/sentinel, type: directory}
     hasBin: true
 
-  '@sys/warp@file:../sys/packages/warp':
-    resolution: {directory: ../sys/packages/warp, type: directory}
+  '@sys/warp@file:vendor/warp':
+    resolution: {directory: vendor/warp, type: directory}
     hasBin: true
 
   '@types/node@22.19.20':
@@ -51,11 +51,11 @@ packages:
 
 snapshots:
 
-  '@sys/consent@file:../sys/packages/consent': {}
+  '@sys/consent@file:vendor/consent': {}
 
-  '@sys/sentinel@file:../sys/packages/sentinel': {}
+  '@sys/sentinel@file:vendor/sentinel': {}
 
-  '@sys/warp@file:../sys/packages/warp': {}
+  '@sys/warp@file:vendor/warp': {}
 
   '@types/node@22.19.20':
     dependencies:
