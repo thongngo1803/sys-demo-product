@@ -2,7 +2,7 @@ import { isClean, runWarp } from '@sys/warp';
 import { bannedColumnsCheck, hasBannedToken, referentialCheck, requiredKeysCheck } from '@sys/warp/checks';
 const BANNED_CURRENCY_TOKENS = ['usd', 'vnd', 'aed'];
 // Fallback demo SQL used when Supabase is not configured.
-// Mirrors the real demo_orders table — amount_usd is the planted issue.
+// Mirrors the real demo_orders table; amount_usd is the planted issue.
 const demoMigrationSql = `
 create table public.demo_orders (
   id uuid primary key,
@@ -13,7 +13,7 @@ create table public.demo_orders (
 );
 `;
 // Fetch column names for a table via PostgREST's built-in OpenAPI schema endpoint.
-// Requires the service_role key — the anon key returns 401 for this endpoint.
+// Requires the service_role key; the anon key returns 401 for this endpoint.
 // Returns [] if Supabase is unreachable or the table is not found.
 export async function fetchSupabaseColumns(tableName) {
     const url = process.env.SUPABASE_URL;
@@ -31,7 +31,7 @@ export async function fetchSupabaseColumns(tableName) {
         });
         if (!res.ok) {
             const text = await res.text().catch(() => '(unreadable)');
-            console.error(`[DEBUG] OpenAPI fetch failed: HTTP ${res.status} — ${text.slice(0, 200)}`);
+            console.error(`[DEBUG] OpenAPI fetch failed: HTTP ${res.status}: ${text.slice(0, 200)}`);
             return [];
         }
         const openapi = (await res.json());
@@ -76,7 +76,7 @@ export async function supabaseSchemaReport() {
                 const columns = await fetchSupabaseColumns('demo_orders');
                 return columns
                     .filter((col) => hasBannedToken(col, bannedSet))
-                    .map((col) => `Column "${col}" bakes a currency into the schema — found in live Supabase demo_orders. Prefer amount + currency fields.`);
+                    .map((col) => `Column "${col}" bakes a currency into the schema; found in live Supabase demo_orders. Prefer amount + currency fields.`);
             },
         }
         : bannedColumnsCheck('supabase-schema-genericity', {
@@ -90,12 +90,12 @@ export async function supabaseSchemaReport() {
             referentialCheck('vendor-registry-integrity', {
                 from: () => FEATURE_FLAG_VENDOR_IDS,
                 to: () => REGISTERED_VENDOR_IDS,
-                message: (id) => `Feature flag references unregistered vendor "${id}" — add it to the vendor registry or remove the flag.`,
+                message: (id) => `Feature flag references unregistered vendor "${id}"; add it to the vendor registry or remove the flag.`,
             }),
             requiredKeysCheck('required-env-config', {
                 required: () => REQUIRED_ENV_KEYS,
                 present: () => REQUIRED_ENV_KEYS.filter((k) => !!process.env[k]),
-                message: (key) => `Required env var "${key}" is not configured — product cannot operate without it.`,
+                message: (key) => `Required env var "${key}" is not configured; product cannot operate without it.`,
             }),
         ],
     });

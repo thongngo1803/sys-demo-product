@@ -37,10 +37,10 @@ Example:
 
 ```text
 User rejects analytics
-→ DENY Google Analytics
+-> DENY Google Analytics
 
 User accepts analytics
-→ ALLOW Google Analytics
+-> ALLOW Google Analytics
 ```
 
 ---
@@ -104,23 +104,23 @@ No Sys package owns product-specific behavior.
 
 ```text
 User Action
-    │
-    ▼
+    |
+    v
 @sys/consent
-    │
-    ▼
+    |
+    v
 Vendor Decision
-    │
-    ▼
+    |
+    v
 @sys/warp
-    │
-    ▼
+    |
+    v
 Schema Validation
-    │
-    ▼
+    |
+    v
 @sys/sentinel
-    │
-    ▼
+    |
+    v
 Health Report
 ```
 

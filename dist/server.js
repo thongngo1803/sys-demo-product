@@ -55,13 +55,13 @@ async function dashboard() {
         .map((r) => {
         const status = r.errors.length === 0 ? '<span class="pass">PASS</span>' : `<span class="fail">FAIL</span>`;
         const detail = r.errors.length === 0
-            ? '—'
+            ? '-'
             : `<ul style="margin:0;padding-left:18px">${r.errors.map((e) => `<li>${e}</li>`).join('')}</ul>`;
         return `<tr><td>${r.name}</td><td>${status}</td><td>${detail}</td></tr>`;
     })
         .join('');
     const promptBadge = needsPrompt
-        ? `<span style="color:#b45309;font-weight:600">YES — user must re-consent</span>`
+        ? `<span style="color:#b45309;font-weight:600">YES - user must re-consent</span>`
         : `<span style="color:#16a34a;font-weight:600">no</span>`;
     return page(`
     <header>
@@ -70,7 +70,7 @@ async function dashboard() {
     </header>
     <main>
 
-      <h2>@sys/consent — cookie/script consent engine</h2>
+      <h2>@sys/consent - cookie/script consent engine</h2>
       <div class="${needsPrompt ? 'warn' : 'info'}">
         <strong>Consent prompt needed:</strong> ${promptBadge}<br>
         <strong>Current policy version:</strong> <code>${policyVersion}</code>
@@ -83,34 +83,34 @@ async function dashboard() {
           <button>Reject non-essential</button>
         </form>
         <form method="post" action="/consent/bump-policy" style="display:inline">
-          <button title="Changes POLICY_VERSION — stored decisions become stale and requiresReprompt returns true">
+          <button title="Changes POLICY_VERSION; stored decisions become stale and requiresReprompt returns true">
             Bump policy version
           </button>
         </form>
       </p>
       <p style="color:#6b7280;font-size:0.9em">
-        After granting consent, click <em>Bump policy version</em> — the stored decision becomes stale
-        (old version ≠ new version) and <code>requiresReprompt()</code> returns <strong>true</strong>.
+        After granting consent, click <em>Bump policy version</em>; the stored decision becomes stale
+        (old version != new version) and <code>requiresReprompt()</code> returns <strong>true</strong>.
       </p>
       <table>
         <thead><tr><th>Vendor</th><th>Category</th><th>Choice</th><th>Decision</th></tr></thead>
         <tbody>${vendorRows}</tbody>
       </table>
 
-      <h2>@sys/warp — config cross-validation</h2>
+      <h2>@sys/warp - config cross-validation</h2>
       <div class="${schema.clean ? 'info' : 'warn'}">
         <strong>Schema check:</strong>
         ${schema.clean ? '<span class="pass">clean</span>' : `<span class="fail">${schema.errorCount} issue(s) found</span>`}
-        &nbsp;·&nbsp;source: <code>${schema.source === 'live' ? '🟢 Supabase live schema' : '⚪ demo SQL fallback'}</code>
+        &nbsp;|&nbsp;source: <code>${schema.source === 'live' ? 'Supabase live schema' : 'demo SQL fallback'}</code>
       </div>
       <table>
         <thead><tr><th>Check</th><th>Result</th><th>Errors</th></tr></thead>
         <tbody>${warpRows}</tbody>
       </table>
 
-      <h2>@sys/sentinel — health</h2>
+      <h2>@sys/sentinel - health</h2>
       <div class="${health.healthy ? 'info' : 'warn'}">
-        <strong>Status:</strong> ${health.healthy ? 'healthy' : 'unhealthy'} — ${health.summary}<br>
+        <strong>Status:</strong> ${health.healthy ? 'healthy' : 'unhealthy'} - ${health.summary}<br>
         <strong>Supabase:</strong> ${supabase.configured ? 'configured' : `missing ${supabase.missing.join(', ')}`}
       </div>
 

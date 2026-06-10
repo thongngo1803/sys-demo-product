@@ -2,7 +2,7 @@ import { ALL_CONSENT_CATEGORIES, buildCategories, canLoadVendor, createConsentSe
 export let POLICY_VERSION = '2026-06-demo';
 export const REGISTRY_VERSION = 'vendors-1';
 export const ANONYMOUS_ID = 'demo-browser';
-/** Simulate a policy update — stored decisions become stale, triggering requiresReprompt. */
+/** Simulate a policy update; stored decisions become stale, triggering requiresReprompt. */
 export function bumpPolicyVersion() {
     POLICY_VERSION = `2026-06-demo-v${Date.now().toString(36)}`;
     return POLICY_VERSION;
