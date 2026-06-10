@@ -1,6 +1,15 @@
 import { isClean, runWarp } from '@sys/warp';
 import { bannedColumnsCheck, hasBannedToken, referentialCheck, requiredKeysCheck } from '@sys/warp/checks';
 const BANNED_CURRENCY_TOKENS = ['usd', 'vnd', 'aed'];
+function debugSupabase(message, detail) {
+    if (process.env.SUPABASE_DEBUG !== 'true')
+        return;
+    if (detail === undefined) {
+        console.log(`[supabase-debug] ${message}`);
+        return;
+    }
+    console.log(`[supabase-debug] ${message}`, detail);
+}
 // Presentation switch:
 // - Keep "broken" to show warp catching planted issues.
 // - Change to "fixed" (or set WARP_DEMO_CASE=fixed in .env) to show all checks passing after the fix.
@@ -47,22 +56,22 @@ export async function fetchSupabaseColumns(tableName) {
         });
         if (!res.ok) {
             const text = await res.text().catch(() => '(unreadable)');
-            console.error(`[DEBUG] OpenAPI fetch failed: HTTP ${res.status}: ${text.slice(0, 200)}`);
+            debugSupabase(`OpenAPI fetch failed: HTTP ${res.status}: ${text.slice(0, 200)}`);
             return [];
         }
         const openapi = (await res.json());
         // OpenAPI 3.0 (Supabase/PostgREST 11+) uses components.schemas; fall back to Swagger 2.0 definitions
         const schemas = openapi.components?.schemas ?? openapi.definitions ?? {};
         const allKeys = Object.keys(schemas);
-        console.error(`[DEBUG] Exposed tables (${allKeys.length}): [${allKeys.join(', ')}]`);
+        debugSupabase(`Exposed tables (${allKeys.length}): [${allKeys.join(', ')}]`);
         if (!schemas[tableName]) {
-            console.error(`[DEBUG] Table "${tableName}" not found in schema`);
+            debugSupabase(`Table "${tableName}" not found in schema`);
         }
         const props = (schemas[tableName] ?? {});
         return Object.keys(props.properties ?? {});
     }
     catch (err) {
-        console.error(`[DEBUG] fetchSupabaseColumns exception:`, err);
+        debugSupabase('fetchSupabaseColumns exception:', err);
         return [];
     }
 }
