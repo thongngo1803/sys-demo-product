@@ -34,7 +34,9 @@ console.log('\n=== @sys/warp: config cross-validation (3 check types) ===\n')
 
 // Step 1: show Supabase connection status and fetched columns before running checks
 const status = supabaseStatus()
-if (status.configured) {
+const schema = await supabaseSchemaReport()
+console.log(`[Warp demo case] ${schema.case}`)
+if (status.configured && schema.case === 'broken') {
   console.log(`[Supabase] Connected - ${status.url}`)
   const columns = await fetchSupabaseColumns('demo_orders')
   if (columns.length > 0) {
@@ -44,11 +46,13 @@ if (status.configured) {
     console.log('[Supabase] demo_orders not found or no columns returned - check table exists and RLS allows anon read\n')
   }
 } else {
-  console.log(`[Supabase] Not configured (missing: ${status.missing.join(', ')}) - using demo SQL fallback\n`)
+  const reason = status.configured
+    ? 'fixed case uses the corrected SQL fixture so the after-fix demo passes before a DB migration'
+    : `missing: ${status.missing.join(', ')}`
+  console.log(`[Supabase] Using ${schema.source} (${reason})\n`)
 }
 
 // Step 2: run warp checks
-const schema = await supabaseSchemaReport()
 for (const result of schema.results) {
   const verdict = result.errors.length === 0 ? 'PASS' : 'FAIL'
   console.log(`[${verdict}] ${result.name}`)

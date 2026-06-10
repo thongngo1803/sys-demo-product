@@ -3,13 +3,34 @@ import { bannedColumnsCheck, hasBannedToken, referentialCheck, requiredKeysCheck
 
 const BANNED_CURRENCY_TOKENS = ['usd', 'vnd', 'aed']
 
-// Fallback demo SQL used when Supabase is not configured.
-// Mirrors the real demo_orders table; amount_usd is the planted issue.
-const demoMigrationSql = `
+type WarpDemoCase = 'broken' | 'fixed'
+
+// Presentation switch:
+// - Keep "broken" to show warp catching planted issues.
+// - Change to "fixed" (or set WARP_DEMO_CASE=fixed in .env) to show all checks passing after the fix.
+const DEFAULT_WARP_DEMO_CASE: WarpDemoCase = 'broken'
+
+export function warpDemoCase(): WarpDemoCase {
+  return process.env.WARP_DEMO_CASE === 'fixed' ? 'fixed' : DEFAULT_WARP_DEMO_CASE
+}
+
+// Broken demo SQL mirrors the planted Supabase issue: amount_usd bakes a currency into the schema.
+const brokenMigrationSql = `
 create table public.demo_orders (
   id uuid primary key,
   customer_id uuid not null,
   amount_usd integer not null,
+  currency text not null,
+  created_at timestamptz not null default now()
+);
+`
+
+// Fixed demo SQL keeps the amount generic and stores the currency as data.
+const fixedMigrationSql = `
+create table public.demo_orders (
+  id uuid primary key,
+  customer_id uuid not null,
+  amount integer not null,
   currency text not null,
   created_at timestamptz not null default now()
 );
@@ -55,8 +76,10 @@ export async function fetchSupabaseColumns(tableName: string): Promise<string[]>
   }
 }
 
-// Planted issue 2: feature-flag config references an unregistered vendor.
-const FEATURE_FLAG_VENDOR_IDS = ['session-cookie', 'product-analytics', 'support-widget', 'unknown-tracker']
+// In the broken case, feature flags reference an unregistered vendor.
+// In the fixed case, every feature-flag vendor exists in the registry.
+const BROKEN_FEATURE_FLAG_VENDOR_IDS = ['session-cookie', 'product-analytics', 'support-widget', 'unknown-tracker']
+const FIXED_FEATURE_FLAG_VENDOR_IDS = ['session-cookie', 'product-analytics', 'support-widget']
 const REGISTERED_VENDOR_IDS = ['session-cookie', 'product-analytics', 'support-widget']
 
 // Required env vars for full operation.
@@ -76,14 +99,19 @@ export async function supabaseSchemaReport(): Promise<{
   clean: boolean
   errorCount: number
   results: Array<{ name: string; errors: string[] }>
-  source: 'live' | 'demo'
+  source: 'live' | 'demo' | 'fixed-demo'
+  case: WarpDemoCase
 }> {
+  const demoCase = warpDemoCase()
   const configured = supabaseStatus().configured
   const bannedSet = new Set(BANNED_CURRENCY_TOKENS)
+  const featureFlagVendorIds =
+    demoCase === 'fixed' ? FIXED_FEATURE_FLAG_VENDOR_IDS : BROKEN_FEATURE_FLAG_VENDOR_IDS
 
-  // When Supabase is configured: query the real demo_orders columns via PostgREST OpenAPI.
-  // When not configured: fall back to scanning the hardcoded demo migration SQL.
-  const schemaGenericityCheck = configured
+  // In broken mode, use live Supabase when configured so the demo catches the planted real schema issue.
+  // In fixed mode, use the fixed SQL fixture so the "after" case can pass even before the DB is migrated.
+  const useLiveSchema = configured && demoCase === 'broken'
+  const schemaGenericityCheck = useLiveSchema
     ? {
         name: 'supabase-schema-genericity',
         async run(): Promise<string[]> {
@@ -94,7 +122,7 @@ export async function supabaseSchemaReport(): Promise<{
         },
       }
     : bannedColumnsCheck('supabase-schema-genericity', {
-        sql: () => demoMigrationSql,
+        sql: () => (demoCase === 'fixed' ? fixedMigrationSql : brokenMigrationSql),
         banned: BANNED_CURRENCY_TOKENS,
         message: (col) =>
           `Column "${col}" bakes a currency into the schema (demo SQL). Prefer amount + currency fields.`,
@@ -104,7 +132,7 @@ export async function supabaseSchemaReport(): Promise<{
     checks: [
       schemaGenericityCheck,
       referentialCheck('vendor-registry-integrity', {
-        from: () => FEATURE_FLAG_VENDOR_IDS,
+        from: () => featureFlagVendorIds,
         to: () => REGISTERED_VENDOR_IDS,
         message: (id) =>
           `Feature flag references unregistered vendor "${id}"; add it to the vendor registry or remove the flag.`,
@@ -121,6 +149,7 @@ export async function supabaseSchemaReport(): Promise<{
     clean: isClean(report),
     errorCount: report.errorCount,
     results: report.results,
-    source: configured ? 'live' : 'demo',
+    source: useLiveSchema ? 'live' : demoCase === 'fixed' ? 'fixed-demo' : 'demo',
+    case: demoCase,
   }
 }

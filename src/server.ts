@@ -121,7 +121,8 @@ async function dashboard(): Promise<string> {
       <div class="${schema.clean ? 'info' : 'warn'}">
         <strong>Schema check:</strong>
         ${schema.clean ? '<span class="pass">clean</span>' : `<span class="fail">${schema.errorCount} issue(s) found</span>`}
-        &nbsp;|&nbsp;source: <code>${schema.source === 'live' ? 'Supabase live schema' : 'demo SQL fallback'}</code>
+        &nbsp;|&nbsp;case: <code>${schema.case}</code>
+        &nbsp;|&nbsp;source: <code>${schema.source === 'live' ? 'Supabase live schema' : schema.source === 'fixed-demo' ? 'fixed demo SQL' : 'demo SQL fallback'}</code>
       </div>
       <table>
         <thead><tr><th>Check</th><th>Result</th><th>Errors</th></tr></thead>

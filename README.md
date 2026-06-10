@@ -152,6 +152,24 @@ set SUPABASE_ANON_KEY=your-anon-key
 pnpm start
 ```
 
+Warp presentation switch:
+
+```bash
+# Shows planted issues: amount_usd + unknown-tracker
+set WARP_DEMO_CASE=broken
+
+# Shows the corrected after-fix case: all warp checks pass
+set WARP_DEMO_CASE=fixed
+```
+
+You can also change the default in `src/supabase.ts`:
+
+```ts
+const DEFAULT_WARP_DEMO_CASE: WarpDemoCase = 'broken'
+```
+
+Change `'broken'` to `'fixed'` when you want the dashboard and CLI demo to validate cleanly without editing environment variables.
+
 Without these variables, Supabase validation will return:
 
 ```text
