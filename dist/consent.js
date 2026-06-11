@@ -1,4 +1,16 @@
+import { z } from 'zod';
 import { ALL_CONSENT_CATEGORIES, buildCategories, canLoadVendor, createConsentService, requiresReprompt, } from '@sys/consent';
+const VendorSchema = z.object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    category: z.enum(['strictly_necessary', 'preferences', 'analytics', 'marketing', 'support']),
+    purpose: z.string().min(1),
+    required: z.boolean(),
+    owner: z.string().min(1),
+    reviewedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    cookies: z.array(z.string()).optional(),
+    domains: z.array(z.string()).optional(),
+});
 export let POLICY_VERSION = '2026-06-demo';
 export const REGISTRY_VERSION = 'vendors-1';
 export const ANONYMOUS_ID = 'demo-browser';
@@ -71,6 +83,7 @@ class MemoryEventSink {
         this.events.push(event);
     }
 }
+z.array(VendorSchema).min(1).parse(vendors);
 const store = new MemoryConsentStore();
 const sink = new MemoryEventSink();
 export const consentService = createConsentService({ store, sink });

@@ -8,10 +8,11 @@ import {
   recordConsent,
   vendorDecisions,
 } from './consent.js'
+import { parseEnv } from './env.js'
 import { productHealth } from './health.js'
 import { supabaseSchemaReport, supabaseStatus } from './supabase.js'
 
-const port = Number(process.env.PORT ?? 4173)
+const { PORT: port } = parseEnv()
 
 function json(body: unknown): string {
   return JSON.stringify(body, null, 2)

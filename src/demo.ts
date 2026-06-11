@@ -5,8 +5,11 @@ import {
   recordConsent,
   vendorDecisions,
 } from './consent.js'
+import { parseEnv } from './env.js'
 import { productHealth } from './health.js'
 import { fetchSupabaseColumns, supabaseSchemaReport, supabaseStatus } from './supabase.js'
+
+parseEnv()
 
 // @sys/consent demo
 

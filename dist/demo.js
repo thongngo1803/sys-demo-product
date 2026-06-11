@@ -1,6 +1,8 @@
 import { bumpPolicyVersion, consentNeedsPrompt, getPolicyVersion, recordConsent, vendorDecisions, } from './consent.js';
+import { parseEnv } from './env.js';
 import { productHealth } from './health.js';
 import { fetchSupabaseColumns, supabaseSchemaReport, supabaseStatus } from './supabase.js';
+parseEnv();
 // @sys/consent demo
 console.log('\n=== @sys/consent: ALLOW / DENY decision engine ===\n');
 console.log(`[1] Before any consent - policy version: "${getPolicyVersion()}"`);

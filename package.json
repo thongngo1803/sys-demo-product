@@ -16,7 +16,8 @@
   "dependencies": {
     "@sys/consent": "file:./vendor/consent",
     "@sys/sentinel": "file:./vendor/sentinel",
-    "@sys/warp": "file:./vendor/warp"
+    "@sys/warp": "file:./vendor/warp",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

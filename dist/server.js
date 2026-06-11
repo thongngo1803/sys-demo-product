@@ -1,8 +1,9 @@
 import { createServer } from 'node:http';
 import { bumpPolicyVersion, consentNeedsPrompt, getPolicyVersion, recentConsentEvents, recordConsent, vendorDecisions, } from './consent.js';
+import { parseEnv } from './env.js';
 import { productHealth } from './health.js';
 import { supabaseSchemaReport, supabaseStatus } from './supabase.js';
-const port = Number(process.env.PORT ?? 4173);
+const { PORT: port } = parseEnv();
 function json(body) {
     return JSON.stringify(body, null, 2);
 }
