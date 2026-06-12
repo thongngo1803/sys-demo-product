@@ -45,17 +45,77 @@ trustworthy.
 at :38, defineX + Zod + secrets-free at :40, zero app-specific imports at :41, and the
 enforcement scripts at :14 and :15.]*
 
+The fastest way to see why each rule matters is to see it broken, then fixed.
+
+*[Show: code examples.]*
+
+**Rule 2 — composition root.** Without a single entry point, setup is scattered and
+invisible to reviewers:
+
+```typescript
+// bad: setup spread across the caller — no single place to audit
+const svc = new ConsentEngine()
+svc.setStore(store)
+svc.setPolicyVersion('v1')
+svc.setSink(sink)
+```
+
+With a composition root, everything is explicit in one call:
+
+```typescript
+// good: one reviewable entry point
+const svc = createConsentService({ store, sink })  // consent.ts:123
+```
+
+**Rule 3 — runtime validation.** Without Zod, bad config leaks silently:
+
+```typescript
+// bad: PORT could be "abc", SUPABASE_URL could be garbage — no early error
+const port = Number(process.env.PORT ?? 4173)
+const url = process.env.SUPABASE_URL
+```
+
+With Zod at the composition root — exactly what the demo does at `src/env.ts:3`:
+
+```typescript
+// good: invalid config throws immediately with a clear message
+const { PORT: port } = parseEnv()
+// PORT is a validated number; SUPABASE_URL is a validated URL or undefined
+```
+
+**Rule 4 — boundary cleanliness.** A package that imports app-specific code can never be
+reused in another app:
+
+```typescript
+// bad: package reaches into the host's internals
+import { supabaseClient } from '../../app/db'
+import { analyticsTracker } from '../../app/mixpanel'
+```
+
+A clean package defines a contract and lets the host wire it in:
+
+```typescript
+// good: package exports the interface; host supplies the implementation
+export interface ConsentStore { save(r: ConsentRecord): Promise<void> }
+// host: createConsentService({ store: new SupabaseConsentStore(db) })
+```
+
+The pattern is the same across all five rules: bad code hides complexity in scattered state
+or untrusted input; good code makes everything explicit and reviewable at one point.
+
 The non-negotiable habit behind all of this is evidence-first. "This package is reusable" is
 not a claim — it's a hope. "The package's public entry exports only its own core and service
 files, at `index.ts:5-6`" is a claim, because you can open it and check. Everything I show
 today is tied to a file and a line, and I verified every one against the live repo before
 this talk.
 
-So here's where my two packages land against the standard: both consent and warp pass on
-plane ownership, clean boundaries, distribution, and tests. Both have exactly one honest gap
-— neither validates its config with Zod at the composition root. I'll show you that gap in
-each rather than hide it. Surfacing it is the job; deciding whether it's acceptable is not
-mine to make.
+So here's where my two packages land against the standard: both pass on plane ownership,
+clean boundaries, distribution, and tests. Both packages have the same honest gap — neither
+validates config with Zod at the composition root. That code is in the monorepo, outside my
+lane this term. But the demo host fills that gap itself: the vendor registry is Zod-validated
+at module init, all env config is parsed through a Zod schema before the server starts, and
+I'll point to both in each talk. Surfacing the package gap is the job; the demo shows what
+the fix looks like.
 
 That's the lens. Now the two packages.
 
@@ -99,10 +159,51 @@ Now the honest contract audit.
 `index.ts:5-6`. Ships from dist with side-effects off: pass — `package.json:7`, with dist
 exports at :8, :10, :14, :22. Tests: pass — 10 files, 43 tests.]*
 
-Two caveats I won't paper over. The composition function is `createConsentService`, not the
-`defineConsent` name the standard prefers — so I mark composition Partial. And there's no Zod
-validation of config — that's the Gap. Consent is functionally solid for the demo; I'm just
-not going to pretend the standard gap isn't there.
+Two caveats in the package I won't paper over. The composition function is
+`createConsentService`, not the `defineConsent` name the standard prefers — so I mark
+composition Partial. And the package itself has no Zod validation of config at the root —
+that's the Gap. That code is in the monorepo, outside my lane.
+
+What the demo host does fill in: `VendorSchema` at `consent.ts:20` defines the vendor shape,
+and `z.array(VendorSchema).min(1).parse(vendors)` at `:119` fires at module init — if any
+vendor entry is malformed, the app throws immediately with a clear Zod error. All startup env
+is parsed through `EnvSchema` at `src/env.ts:3` via `parseEnv()` at `:15`. That is Rule 3
+applied where I own the code.
+
+*[Show: consent code examples.]*
+
+**The decision is one function call.** `canUse` encodes the safe default — if no decision
+exists or the stored decision is stale, it returns `false` automatically:
+
+```typescript
+// core.ts:132 — the entire consent gate in one line
+if (canUse('analytics', ctx)) {
+  loadAnalytics()
+}
+// ctx.decision === null   → false (no consent yet)
+// policyVersion mismatch  → false (requiresReprompt at :123)
+// category 'analytics' granted → true
+```
+
+**The host wires two seams.** The package defines contracts; the host supplies the
+implementations at composition time:
+
+```typescript
+// service.ts:17-19 — host injects store + optional event sink
+const service = createConsentService({
+  store: new SupabaseConsentStore(db),  // implements ConsentStore at core.ts:184
+  sink:  new SentinelEventSink(),       // implements ConsentEventSink at core.ts:212
+})
+```
+
+**Zod validates the vendor registry at module init** — demo's own application of Rule 3.
+Any malformed entry throws before the first request is served:
+
+```typescript
+// consent.ts:119
+z.array(VendorSchema).min(1).parse(vendors)
+// if reviewedAt is missing or category is a typo → ZodError thrown at startup
+```
 
 Let me show it running.
 
@@ -124,9 +225,10 @@ version, so `requiresReprompt` returns true, and every non-essential vendor is b
 until the user re-consents. That's the whole point: when the rules change, old permission
 doesn't silently carry over.
 
-*[Evidence in the demo: policy version at `sys-demo-product/src/consent.ts:18`, the bump at
-:23, the vendor registry at :32, the in-memory store at :66, `recordConsent` at :126,
-`vendorDecisions` at :159, and the dashboard routes at `server.ts:150`, `:156`, `:162`.]*
+*[Evidence in the demo: policy version at `sys-demo-product/src/consent.ts:32`, the bump at
+`:37`, the vendor registry at `:46`, Zod vendor validation at `:119`, the in-memory store at
+`:80`, `recordConsent` at `:142`, `vendorDecisions` at `:175`, and the dashboard routes at
+`server.ts:151`, `:157`, `:163`.]*
 
 On tests, the package ships 43 tests across 10 files — decision engine, category builder,
 service, lifecycle, governance policy, negative inputs, and adversarial replay and protocol
@@ -134,10 +236,9 @@ cases. And because the demo product had no tests at all, I added 4 of my own in
 `sys-demo-product/src/__tests__/consent.test.ts` that lock in exactly the flow I just showed
 — necessary-only, grant, bump, re-prompt — running offline.
 
-The honest gaps I'll name: no Zod validation at composition time; the composition function
-isn't named `defineConsent`; and persistence is deliberately host-owned, which is why the
-demo uses an in-memory store — and that has a real consequence I hit, which I'll come back to
-in my lessons.
+The gaps in the package: no Zod and not `defineConsent` — in the monorepo, not my lane.
+In the demo host: persistence is in-memory — deliberately host-owned by design, but that has
+a real consequence I hit, which I'll come back to in my lessons.
 
 If anyone asks: analytics isn't on by default because it isn't strictly necessary —
 necessary-only is the safe default. We re-prompt after a policy change because the old
@@ -176,13 +277,53 @@ The contract audit looks like consent's.
 `index.ts:4-6` exports only package files), dist (`package.json:8`, :13, :17, :30), CLI
 artifact (:10), side-effects off (:7): all pass. Tests: pass — 11 files, 45 tests.]*
 
-The one gap is the same as consent's: `defineWarp` exists, at `core.ts:22`, but it's an
-identity-style helper — it doesn't Zod-validate the config at the root.
+The package gap is the same as consent's: `defineWarp` exists, at `core.ts:22`, but it's an
+identity-style helper — it doesn't Zod-validate the config at the root. Same monorepo, same
+lane restriction. The demo host covers the env side: `parseEnv()` at `src/env.ts:15` validates
+`WARP_DEMO_CASE`, `SUPABASE_URL`, and all required keys through Zod before the server starts.
 
 In the demo, warp runs three checks against our orders schema. First, schema genericity — a
 banned-token scan that flags a currency baked into a column name. Second, vendor registry
 integrity — a referential check that every feature-flag vendor exists in the approved
 registry. Third, required environment config — that the keys the product needs are present.
+
+*[Show: warp code examples.]*
+
+**The check runner model.** Host registers named checks; warp runs them all and aggregates
+one report — supabase.ts:140:
+
+```typescript
+const report = await runWarp({
+  checks: [
+    bannedColumnsCheck('schema-genericity',  { sql, banned: ['usd','vnd','aed'] }),
+    referentialCheck('vendor-integrity',      { from: featureFlags, to: registry }),
+    requiredKeysCheck('env-config',           { required: KEYS, present: presentKeys }),
+  ]
+})
+isClean(report)  // true = zero errors across all three checks
+```
+
+**`hasBannedToken` is pure** — checks.ts:56. It splits a column name by `_` and tests
+each segment against the banned set:
+
+```typescript
+hasBannedToken('amount_usd', new Set(['usd','vnd']))  // true  — segment 'usd' is banned
+hasBannedToken('amount',     new Set(['usd','vnd']))  // false — no banned segment
+hasBannedToken('currency',   new Set(['usd','vnd']))  // false — 'currency' is not in set
+```
+
+**`referentialCheck` wires any two collections** — checks.ts:8. Every item in `from()`
+must exist in `to()`; missing ones produce a structured error:
+
+```typescript
+referentialCheck('vendor-registry-integrity', {
+  from:    () => featureFlagVendorIds,   // ['session-cookie', ..., 'unknown-tracker']
+  to:      () => REGISTERED_VENDOR_IDS,  // ['session-cookie', 'product-analytics', ...]
+  message: id => `Unregistered vendor "${id}" referenced in feature flags`,
+})
+// broken case → errors: ['Unregistered vendor "unknown-tracker" ...']
+// fixed case  → errors: []
+```
 
 Let me run the broken case.
 
@@ -222,9 +363,9 @@ environment-integrity, and negative, malformed, governance, and adversarial-evas
 added 6 more in `sys-demo-product/src/__tests__/supabase.test.ts`, covering the broken-catches
 and fixed-clean behavior offline against the SQL fixtures — so the demo's own claim is tested.
 
-Honest gaps: no Zod validation at the root; warp reports but never fixes or migrates; and the
-fixed case uses a corrected SQL fixture, so I can show the after-fix pass even before a real
-database migration is applied.
+Package gaps: `defineWarp` with no Zod — same as consent, same lane restriction. In the demo:
+warp reports but never fixes or migrates; the fixed case uses a corrected SQL fixture, so the
+after-fix demo passes before a real database migration is applied.
 
 If anyone asks: warp doesn't fix the schema and doesn't run migrations — humans or migration
 tools do that. It differs from a unit test because a unit test checks code behavior, while
@@ -305,4 +446,6 @@ Person C owns Data & Trust. Three talks: the coding standards that define a good
 which validates schema and configuration. The demo shows consent's safe default and policy
 re-prompt, warp catching planted issues, and warp clean after the fix. Every claim is backed
 by a file and a line — 43 tests for consent, 45 for warp, and 10 I added to the demo, 98 green
-in all — with one honest gap in each: no Zod validation at the composition root.
+in all. Both packages share the same honest gap: no Zod at the composition root — in the
+monorepo, outside my lane. The demo host applies Rule 3 itself: vendor registry Zod-validated
+at `consent.ts:119`, env config through `EnvSchema` at `env.ts:3`.
